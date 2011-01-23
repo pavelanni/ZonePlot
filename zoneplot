@@ -1,0 +1,34 @@
+#!/usr/bin/bash
+# Here are the plot's parameters
+geometry="500x300+0+0"  # choose your own
+nwin=1			# number of windows
+plength=50  		# plot length in number of samples 
+minu=0           	# min utilization value is 0
+maxu=`psrinfo | wc -l` 	# max utilization value is equal to number of processors
+
+period=5		# sample length in seconds
+
+nz=`zoneadm list | wc -l`  # how many zones are running
+rzones=( `zoneadm list` )  # list of zone names
+
+# We are going to plot everything in window 0, so we initialize a string with $nz zeros
+declare -a pwindows
+for ((i=0; i < $nz; i++))
+do
+	pwindows+=( "0" )
+done
+
+zonestat -p -P zones -r summary -S name $period | cut -d : -f3,4  | \
+{ IFS=":" ; while read zname util  
+            do
+	       for (( i=0; i< $nz; i++ )) 
+               do
+	    #     echo $i
+                 if [ "$zname" = "${rzones[$i]}" ]
+		 then
+		  printf "%s:%s\n" $i $util 
+                 fi
+	       done 
+   done 
+} | ./driveGnuPlotStreams.pl $nz $nwin $plength $minu $maxu $geometry ${rzones[@]} ${pwindows[@]}
+
